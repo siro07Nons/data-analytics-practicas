@@ -4,7 +4,7 @@
 
 -- BASE DE DATOS CREACION Y SELECCION --
 CREATE DATABASE Ventas_Tech_D8;
-USE Ventas_Tech_D8
+USE Ventas_Tech_DB;
 
 
 -- SECCION 1: DROP TABLES --
