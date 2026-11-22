@@ -1,0 +1,265 @@
+-- Pre- Entrega 4 CONSULTAS SQL DE NEGOCIO --
+
+USE Ventas_Tech_D8;
+GO
+
+-- CONSULTA 1: RESUMEN MENSUAL
+
+SELECT
+MONTH(fecha_venta) AS Mes,
+SUM(cantidad * precio_unitario) AS Total_Facturado,
+COUNT(*) AS Cantidad_Pedidos,
+SUM(cantidad * precio_unitario) * 1.0 / COUNT(*) AS Ticket_Promedio
+FROM ventas
+GROUP BY MONTH(fecha_venta)
+ORDER BY Mes;
+
+-- CONSULTA 2: RANKING DE PRODUCTOS
+
+SELECT TOP 5
+id_producto,
+SUM(cantidad) AS Unidades_Vendidas,
+SUM(cantidad * precio_unitario) AS Total_Generado
+FROM ventas
+GROUP BY id_producto
+ORDER BY Total_Generado DESC;
+
+-- CONSULTA 3: CLIENTES RECURRENTES
+
+SELECT
+id_cliente,
+COUNT(*) AS Cantidad_Pedidos,
+SUM(cantidad * precio_unitario) AS Total_Gastado
+FROM ventas
+GROUP BY id_cliente
+HAVING COUNT(*) > 1
+ORDER BY Cantidad_Pedidos DESC;
+
+-- CONSULTA 4: COMPARACION DE PRODUCTOS POR ENCIMA O POR DEBAJO DEL PROMEDIO
+
+WITH Facturacion_Producto AS (
+SELECT
+id_producto,
+SUM(cantidad * precio_unitario) AS Total_Facturado
+FROM ventas
+GROUP BY id_producto
+)
+
+SELECT
+id_producto,
+Total_Facturado,
+CASE
+WHEN Total_Facturado >
+(SELECT AVG(Total_Facturado)
+FROM Facturacion_Producto)
+THEN 'Por encima'
+ELSE 'Por debajo'
+END AS Comparacion_Promedio
+FROM Facturacion_Producto
+ORDER BY Total_Facturado DESC;
+
+
+-- PREGUNTAS DE LA PRE ENTREGA 1 -- (me ayudé con ia porque se me hizo super complicado :/ )
+
+--1. ¿Cómo evolucionaron las ventas mes a mes y que variación presentan frente al periodo anterior?--
+SELECT
+MONTH(fecha_venta) AS Mes,
+
+SUM(CASE
+WHEN YEAR(fecha_venta) = 2023
+THEN cantidad * precio_unitario
+ELSE 0
+END) AS Ventas_2023,
+
+SUM(CASE
+WHEN YEAR(fecha_venta) = 2024
+THEN cantidad * precio_unitario
+ELSE 0
+END) AS Ventas_2024,
+
+SUM(CASE
+WHEN YEAR(fecha_venta) = 2024
+THEN cantidad * precio_unitario
+ELSE 0
+END)
+-
+SUM(CASE
+WHEN YEAR(fecha_venta) = 2023
+THEN cantidad * precio_unitario
+ELSE 0
+END) AS Diferencia
+
+FROM ventas
+GROUP BY MONTH(fecha_venta)
+ORDER BY Mes;
+
+--2. ¿Qué territorios aportan más ventas y cuales muestran las mayores caídas o mejoras?--
+SELECT
+c.ciudad AS Territorio,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2023,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2024,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END)
+-
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Diferencia
+
+FROM ventas v
+INNER JOIN clientes c
+ON v.id_cliente = c.id_cliente
+
+GROUP BY c.ciudad
+ORDER BY Diferencia DESC;
+
+--3. ¿Qué categorías y productos explican la mayor parte de los cambios en las ventas?--
+--CATEGORIAS
+SELECT
+c.nombre_categoria AS Categoria,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2023,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2024,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END)
+-
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Diferencia
+
+FROM ventas v
+INNER JOIN productos p
+ON v.id_producto = p.id_producto
+INNER JOIN categorias c
+ON p.id_categoria = c.id_categoria
+
+GROUP BY c.nombre_categoria
+ORDER BY Diferencia DESC;
+
+--PRODUCTOS
+SELECT
+p.nombre_producto AS Producto,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2023,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Ventas_2024,
+
+SUM(CASE
+WHEN YEAR(v.fecha_venta) = 2024
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END)
+-
+SUM(CASE
+ WHEN YEAR(v.fecha_venta) = 2023
+THEN v.cantidad * v.precio_unitario
+ELSE 0
+END) AS Diferencia
+
+FROM ventas v
+INNER JOIN productos p
+    ON v.id_producto = p.id_producto
+
+GROUP BY p.nombre_producto
+ORDER BY Diferencia DESC;
+
+--4. ¿Cambió la cantidad de unidades vendidas o el importe promedio por transacción?--
+SELECT
+YEAR(fecha_venta) AS Anio,
+
+SUM(cantidad) AS Unidades_Vendidas,
+
+COUNT(id_venta) AS Cantidad_Transacciones,
+
+SUM(cantidad * precio_unitario) AS Total_Facturado,
+
+SUM(cantidad * precio_unitario) * 1.0
+/ NULLIF(COUNT(id_venta), 0) AS Importe_Promedio
+
+FROM ventas
+
+GROUP BY YEAR(fecha_venta)
+ORDER BY Anio;
+
+--5. ¿Qué proporción de clientes vuelve a comprar y cómo evoluciona la cantidad de clientes activos?--
+WITH Compras_Cliente AS (
+SELECT
+YEAR(fecha_venta) AS Anio,
+id_cliente,
+COUNT(id_venta) AS Cantidad_Compras
+FROM ventas
+GROUP BY
+YEAR(fecha_venta),
+id_cliente
+),
+
+Resumen_Clientes AS (
+SELECT
+Anio,
+
+COUNT(*) AS Clientes_Activos,
+
+SUM(CASE
+WHEN Cantidad_Compras > 1 THEN 1
+ELSE 0
+END) AS Clientes_Recurrentes
+
+FROM Compras_Cliente
+GROUP BY Anio
+)
+
+SELECT
+Anio,
+
+Clientes_Activos,
+
+Clientes_Recurrentes,
+
+Clientes_Recurrentes * 100.0
+/ NULLIF(Clientes_Activos, 0)
+AS Porcentaje_Recurrentes,
+
+Clientes_Activos * 100.0
+/ NULLIF((SELECT COUNT(*) FROM clientes), 0)
+AS Porcentaje_Activos
+
+FROM Resumen_Clientes
+ORDER BY Anio;
